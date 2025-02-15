@@ -1,0 +1,18 @@
+package com.dvFabricio.BMEH.domain.DTOs;
+
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record UserRequestDTO(
+        @NotBlank(message = "Login não pode estar vazio")
+        String login,
+
+        @NotBlank(message = "Email não pode estar vazio")
+        @Email(message = "Email deve ser válido")
+        String email,
+
+        @NotBlank(message = "Senha não pode estar vazia")
+        String password
+) {
+}

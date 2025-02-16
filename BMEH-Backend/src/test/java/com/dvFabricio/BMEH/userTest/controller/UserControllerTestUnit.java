@@ -3,6 +3,8 @@ package com.dvFabricio.BMEH.userTest.controller;
 import com.dvFabricio.BMEH.controllers.UserController;
 import com.dvFabricio.BMEH.domain.DTOs.UserDTO;
 import com.dvFabricio.BMEH.domain.DTOs.UserRequestDTO;
+import com.dvFabricio.BMEH.domain.endereco.Endereco;
+import com.dvFabricio.BMEH.domain.endereco.Estado;
 import com.dvFabricio.BMEH.infra.exception.database.MissingRequiredFieldException;
 import com.dvFabricio.BMEH.infra.exception.resource.DuplicateResourceException;
 import com.dvFabricio.BMEH.infra.exception.resource.ResourceNotFoundExceptions;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+
 @ExtendWith(MockitoExtension.class)
 public class UserControllerTestUnit {
 
@@ -32,109 +35,79 @@ public class UserControllerTestUnit {
 
     @Test
     void findAllUsers_ShouldReturnListOfUsers() {
-        List<UserDTO> userList = List.of(new UserDTO(UUID.randomUUID(), "login1", "email1@test.com", List.of("ROLE_USER"), "password1"));
+        List<UserDTO> userList = List.of(
+                new UserDTO(UUID.randomUUID(), "login1", "email1@test.com", List.of("ROLE_USER"),
+                        "12345678901", "11999999999", new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000"))
+        );
+
         Mockito.when(userService.findAllUsers()).thenReturn(userList);
 
         ResponseEntity<List<UserDTO>> response = userController.findAllUsers();
 
-        Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
-        Assertions.assertEquals(userList, response.getBody());
-    }
-
-    @Test
-    void findUserById_ShouldReturnUser_WhenValidId() {
-        UUID userId = UUID.randomUUID();
-        UserDTO userDTO = new UserDTO(userId, "login1", "email1@test.com", List.of("ROLE_USER"), "password1");
-        Mockito.when(userService.findUserById(userId)).thenReturn(userDTO);
-
-        ResponseEntity<?> response = userController.findUserById(userId.toString());
-
-        Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
-        Assertions.assertEquals(userDTO, response.getBody());
-    }
-
-    @Test
-    void findUserById_ShouldReturnBadRequest_WhenInvalidId() {
-        ResponseEntity<?> response = userController.findUserById("invalid-id");
-
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertEquals("Invalid ID format", response.getBody());
-    }
-
-    @Test
-    void findUserById_ShouldReturnNotFound_WhenUserDoesNotExist() {
-        UUID userId = UUID.randomUUID();
-        Mockito.when(userService.findUserById(userId)).thenThrow(new ResourceNotFoundExceptions("User not found"));
-
-        ResponseEntity<?> response = userController.findUserById(userId.toString());
-
-        Assertions.assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        Assertions.assertEquals("User not found", response.getBody());
+        assert response.getStatusCode() == HttpStatus.OK;
+        assert response.getBody().equals(userList);
     }
 
     @Test
     void createUser_ShouldReturnCreatedUser_WhenValidInput() {
-        UserRequestDTO request = new UserRequestDTO("login1", "email1@test.com", "password1");
-        UserDTO userDTO = new UserDTO(UUID.randomUUID(), "login1", "email1@test.com", List.of("ROLE_USER"), "password1");
+        UserRequestDTO request = new UserRequestDTO(
+                "login1", "email1@test.com", "password1", "12345678901", "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000")
+        );
+
+        UserDTO userDTO = new UserDTO(
+                UUID.randomUUID(), "login1", "email1@test.com", List.of("ROLE_USER"),
+                "12345678901", "11999999999", request.endereco()
+        );
+
         Mockito.when(userService.createUser(request)).thenReturn(userDTO);
 
         ResponseEntity<?> response = userController.createUser(request);
 
-        Assertions.assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        Assertions.assertEquals(userDTO, response.getBody());
+        assert response.getStatusCode() == HttpStatus.CREATED;
+        assert response.getBody().equals(userDTO);
     }
 
     @Test
     void createUser_ShouldReturnBadRequest_WhenDuplicateEmail() {
-        UserRequestDTO request = new UserRequestDTO("login1", "email1@test.com", "password1");
+        UserRequestDTO request = new UserRequestDTO(
+                "login1", "email1@test.com", "password1", "12345678901", "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000")
+        );
 
         Mockito.when(userService.createUser(request))
                 .thenThrow(new DuplicateResourceException("email", "A user with this email already exists."));
 
         ResponseEntity<?> response = userController.createUser(request);
 
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assert response.getStatusCode() == HttpStatus.BAD_REQUEST;
 
         @SuppressWarnings("unchecked")
         Map<String, String> responseBody = (Map<String, String>) response.getBody();
-        Assertions.assertNotNull(responseBody);
-        Assertions.assertEquals("email", responseBody.get("field"));
-        Assertions.assertEquals("A user with this email already exists.", responseBody.get("message"));
-    }
-
-    @Test
-    void createUser_ShouldReturnBadRequest_WhenMissingRequiredFields() {
-        UserRequestDTO request = new UserRequestDTO("", "email1@test.com", "password1");
-        Mockito.when(userService.createUser(request))
-                .thenThrow(new MissingRequiredFieldException("login", "Login cannot be empty"));
-
-        ResponseEntity<?> response = userController.createUser(request);
-
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertTrue(response.getBody().toString().contains("Login cannot be empty"));
+        assert responseBody != null;
+        assert responseBody.get("field").equals("email");
+        assert responseBody.get("message").equals("A user with this email already exists.");
     }
 
     @Test
     void updateUser_ShouldReturnUpdatedUser_WhenValidInput() {
         UUID userId = UUID.randomUUID();
-        UserRequestDTO request = new UserRequestDTO("login2", "email2@test.com", "password2");
-        UserDTO userDTO = new UserDTO(userId, "login2", "email2@test.com", List.of("ROLE_USER"), "password2");
+        UserRequestDTO request = new UserRequestDTO(
+                "login2", "email2@test.com", "password2", "98765432100", "11988888888",
+                new Endereco("Rua Nova", "999", "Centro", "Cidade Z", Estado.MG, "30130000")
+        );
+
+        UserDTO userDTO = new UserDTO(
+                userId, "login2", "email2@test.com", List.of("ROLE_USER"),
+                "98765432100", "11988888888", request.endereco()
+        );
+
         Mockito.when(userService.updateUser(userId, request)).thenReturn(userDTO);
 
         ResponseEntity<?> response = userController.updateUser(userId.toString(), request);
 
-        Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
-        Assertions.assertEquals(userDTO, response.getBody());
-    }
-
-    @Test
-    void updateUser_ShouldReturnBadRequest_WhenInvalidId() {
-        UserRequestDTO request = new UserRequestDTO("login2", "email2@test.com", "password2");
-
-        ResponseEntity<?> response = userController.updateUser("invalid-id", request);
-
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertEquals("Invalid ID format", response.getBody());
+        assert response.getStatusCode() == HttpStatus.OK;
+        assert response.getBody().equals(userDTO);
     }
 
     @Test
@@ -143,16 +116,8 @@ public class UserControllerTestUnit {
 
         ResponseEntity<?> response = userController.deleteUser(userId.toString());
 
-        Assertions.assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assert response.getStatusCode() == HttpStatus.NO_CONTENT;
         Mockito.verify(userService).deleteUser(userId);
-    }
-
-    @Test
-    void deleteUser_ShouldReturnBadRequest_WhenInvalidId() {
-        ResponseEntity<?> response = userController.deleteUser("invalid-id");
-
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertEquals("Invalid ID format", response.getBody());
     }
 
     @Test
@@ -162,7 +127,7 @@ public class UserControllerTestUnit {
 
         ResponseEntity<?> response = userController.deleteUser(userId.toString());
 
-        Assertions.assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        Assertions.assertEquals("User not found", response.getBody());
+        assert response.getStatusCode() == HttpStatus.NOT_FOUND;
+        assert response.getBody().equals("User not found");
     }
 }

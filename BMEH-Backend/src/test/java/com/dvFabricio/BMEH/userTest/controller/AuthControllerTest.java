@@ -4,12 +4,14 @@ import com.dvFabricio.BMEH.controllers.AuthController;
 import com.dvFabricio.BMEH.domain.DTOs.LoginRequestDTO;
 import com.dvFabricio.BMEH.domain.DTOs.LoginResponseDTO;
 import com.dvFabricio.BMEH.domain.DTOs.RegisterRequestDTO;
+import com.dvFabricio.BMEH.domain.endereco.Endereco;
+import com.dvFabricio.BMEH.domain.endereco.Estado;
 import com.dvFabricio.BMEH.domain.user.Role;
 import com.dvFabricio.BMEH.domain.user.User;
 import com.dvFabricio.BMEH.infra.security.TokenService;
 import com.dvFabricio.BMEH.repositories.RoleRepository;
 import com.dvFabricio.BMEH.repositories.UserRepository;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,6 +24,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
@@ -41,26 +45,39 @@ class AuthControllerTest {
     @Mock
     private TokenService tokenService;
 
+    private User user;
+
+    @BeforeEach
+    void setup() {
+        user = new User(
+                "userLogin",
+                "user@example.com",
+                "encodedPassword123",
+                "12345678901",
+                "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000")
+        );
+        user.setId(UUID.randomUUID());
+    }
+
     @Test
     void login_ShouldReturnToken_WhenValidCredentials() {
         String email = "user@example.com";
         String password = "password123";
-        String encodedPassword = "encodedPassword123";
         String token = "mockToken";
-        User user = new User("userLogin", email, encodedPassword);
 
         Mockito.when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        Mockito.when(passwordEncoder.matches(password, encodedPassword)).thenReturn(true);
+        Mockito.when(passwordEncoder.matches(password, user.getPassword())).thenReturn(true);
         Mockito.when(tokenService.generateToken(user)).thenReturn(token);
 
         LoginRequestDTO request = new LoginRequestDTO(email, password);
         ResponseEntity<?> response = authController.login(request);
 
-        Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         LoginResponseDTO responseBody = (LoginResponseDTO) response.getBody();
-        Assertions.assertNotNull(responseBody);
-        Assertions.assertEquals("userLogin", responseBody.login());
-        Assertions.assertEquals(token, responseBody.token());
+        assertNotNull(responseBody);
+        assertEquals("userLogin", responseBody.login());
+        assertEquals(token, responseBody.token());
     }
 
     @Test
@@ -69,8 +86,8 @@ class AuthControllerTest {
 
         ResponseEntity<?> response = authController.login(request);
 
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertEquals("Email cannot be empty.", response.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Email cannot be empty.", response.getBody());
     }
 
     @Test
@@ -82,25 +99,23 @@ class AuthControllerTest {
         LoginRequestDTO request = new LoginRequestDTO(email, "password123");
         ResponseEntity<?> response = authController.login(request);
 
-        Assertions.assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        Assertions.assertEquals("User not found", response.getBody());
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("User not found", response.getBody());
     }
 
     @Test
     void login_ShouldReturnUnauthorized_WhenPasswordIsInvalid() {
         String email = "user@example.com";
         String password = "password123";
-        String encodedPassword = "encodedPassword123";
-        User user = new User("userLogin", email, encodedPassword);
 
         Mockito.when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        Mockito.when(passwordEncoder.matches(password, encodedPassword)).thenReturn(false);
+        Mockito.when(passwordEncoder.matches(password, user.getPassword())).thenReturn(false);
 
         LoginRequestDTO request = new LoginRequestDTO(email, password);
         ResponseEntity<?> response = authController.login(request);
 
-        Assertions.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        Assertions.assertEquals("Invalid credentials", response.getBody());
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Invalid credentials", response.getBody());
     }
 
     @Test
@@ -114,10 +129,18 @@ class AuthControllerTest {
         Role role = new Role("ROLE_USER");
         role.setId(UUID.randomUUID());
 
-        User newUser = new User(login, email, encodedPassword);
+        User newUser = new User(
+                login,
+                email,
+                encodedPassword,
+                "98765432100",
+                "11988888888",
+                new Endereco("Rua Nova", "999", "Centro", "Cidade Z", Estado.MG, "30130000")
+        );
         newUser.setId(UUID.randomUUID());
 
         Mockito.when(userRepository.existsByEmail(email)).thenReturn(false);
+        Mockito.when(userRepository.existsByCpf("98765432100")).thenReturn(false);
         Mockito.when(passwordEncoder.encode(password)).thenReturn(encodedPassword);
         Mockito.when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(role));
         Mockito.when(userRepository.save(Mockito.any(User.class))).thenAnswer(invocation -> {
@@ -127,15 +150,16 @@ class AuthControllerTest {
         });
         Mockito.when(tokenService.generateToken(Mockito.any(User.class))).thenReturn(token);
 
-        RegisterRequestDTO request = new RegisterRequestDTO(login, email, password);
+        RegisterRequestDTO request = new RegisterRequestDTO(login, email, password, "98765432100", "11988888888",
+                new Endereco("Rua Nova", "999", "Centro", "Cidade Z", Estado.MG, "30130000"));
 
         ResponseEntity<?> response = authController.register(request);
 
-        Assertions.assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
         LoginResponseDTO responseBody = (LoginResponseDTO) response.getBody();
-        Assertions.assertNotNull(responseBody);
-        Assertions.assertEquals(login, responseBody.login());
-        Assertions.assertEquals(token, responseBody.token());
+        assertNotNull(responseBody);
+        assertEquals(login, responseBody.login());
+        assertEquals(token, responseBody.token());
     }
 
     @Test
@@ -143,11 +167,27 @@ class AuthControllerTest {
         String email = "existinguser@example.com";
         Mockito.when(userRepository.existsByEmail(email)).thenReturn(true);
 
-        RegisterRequestDTO request = new RegisterRequestDTO("login", email, "password123");
+        RegisterRequestDTO request = new RegisterRequestDTO("login", email, "password123", "12345678901", "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000"));
+
         ResponseEntity<?> response = authController.register(request);
 
-        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        Assertions.assertEquals("Email is already in use.", response.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Email is already in use.", response.getBody());
+    }
+
+    @Test
+    void register_ShouldReturnBadRequest_WhenCpfAlreadyExists() {
+        String cpf = "12345678901";
+        Mockito.when(userRepository.existsByCpf(cpf)).thenReturn(true);
+
+        RegisterRequestDTO request = new RegisterRequestDTO("login", "user@example.com", "password123", cpf, "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000"));
+
+        ResponseEntity<?> response = authController.register(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("CPF is already in use.", response.getBody());
     }
 
     @Test
@@ -157,12 +197,15 @@ class AuthControllerTest {
         String login = "newUser";
 
         Mockito.when(userRepository.existsByEmail(email)).thenReturn(false);
+        Mockito.when(userRepository.existsByCpf("98765432100")).thenReturn(false);
         Mockito.when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.empty());
 
-        RegisterRequestDTO request = new RegisterRequestDTO(login, email, password);
+        RegisterRequestDTO request = new RegisterRequestDTO(login, email, password, "98765432100", "11999999999",
+                new Endereco("Rua A", "123", "Bairro B", "Cidade C", Estado.SP, "01001000"));
+
         ResponseEntity<?> response = authController.register(request);
 
-        Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        Assertions.assertEquals("Role 'ROLE_USER' not found", response.getBody());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Role 'ROLE_USER' not found", response.getBody());
     }
 }

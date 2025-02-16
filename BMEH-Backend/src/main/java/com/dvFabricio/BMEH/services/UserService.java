@@ -34,7 +34,9 @@ public class UserService {
     }
 
     public UserDTO findUserById(UUID userId) {
-        return userRepository.findById(userId).map(UserDTO::new).orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
+        return userRepository.findById(userId)
+                .map(UserDTO::new)
+                .orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
     }
 
     @Transactional
@@ -45,17 +47,28 @@ public class UserService {
             throw new DuplicateResourceException("email", "A user with this email already exists.");
         }
 
+        if (userRepository.existsByCpf(userRequestDTO.cpf())) {
+            throw new DuplicateResourceException("cpf", "A user with this CPF already exists.");
+        }
+
         String encodedPassword = passwordEncoder.encode(userRequestDTO.password());
-        User user = new User(userRequestDTO.login(), userRequestDTO.email(), encodedPassword);
+        User user = new User(
+                userRequestDTO.login(),
+                userRequestDTO.email(),
+                encodedPassword,
+                userRequestDTO.cpf(),
+                userRequestDTO.telefone(),
+                userRequestDTO.endereco()
+        );
 
         user = userRepository.save(user);
         return new UserDTO(user);
     }
 
-
     @Transactional
     public UserDTO updateUser(UUID userId, UserRequestDTO userRequestDTO) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
 
         logger.debug("Before update: {}", user);
         updateUserFields(user, userRequestDTO);
@@ -67,7 +80,8 @@ public class UserService {
 
     @Transactional
     public void deleteUser(UUID userId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundExceptions("User not found with id: " + userId));
         userRepository.delete(user);
     }
 
@@ -81,6 +95,15 @@ public class UserService {
         if (!isBlank(userRequestDTO.password())) {
             user.setPassword(passwordEncoder.encode(userRequestDTO.password()));
         }
+        if (!isBlank(userRequestDTO.cpf())) {
+            user.setCpf(userRequestDTO.cpf());
+        }
+        if (!isBlank(userRequestDTO.telefone())) {
+            user.setTelefone(userRequestDTO.telefone());
+        }
+        if (userRequestDTO.endereco() != null) {
+            user.setEndereco(userRequestDTO.endereco());
+        }
     }
 
     private void validateRequiredFields(UserRequestDTO userRequestDTO) {
@@ -93,11 +116,21 @@ public class UserService {
         if (isBlank(userRequestDTO.password())) {
             throw new MissingRequiredFieldException("password", "Password cannot be empty");
         }
+        if (isBlank(userRequestDTO.cpf())) {
+            throw new MissingRequiredFieldException("cpf", "CPF cannot be empty");
+        }
+        if (isBlank(userRequestDTO.telefone())) {
+            throw new MissingRequiredFieldException("telefone", "Phone number cannot be empty");
+        }
+        if (userRequestDTO.endereco() == null) {
+            throw new MissingRequiredFieldException("endereco", "Address cannot be empty");
+        }
     }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 }
+
 
 

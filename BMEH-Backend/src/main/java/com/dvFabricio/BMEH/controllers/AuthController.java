@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -58,11 +59,23 @@ public class AuthController {
         if (repository.existsByEmail(body.email())) {
             return ResponseEntity.badRequest().body("Email is already in use.");
         }
+        if (repository.existsByCpf(body.cpf())) {
+            return ResponseEntity.badRequest().body("CPF is already in use.");
+        }
 
         try {
-            User newUser = new User(body.login(), body.email(), passwordEncoder.encode(body.password()));
+            User newUser = new User(
+                    body.login(),
+                    body.email(),
+                    passwordEncoder.encode(body.password()),
+                    body.cpf(),
+                    body.telefone(),
+                    body.endereco()
+            );
+
             Role userRole = roleRepository.findByName("ROLE_USER")
                     .orElseThrow(() -> new ResourceNotFoundExceptions("Role 'ROLE_USER' not found"));
+
             newUser.setRoles(List.of(userRole));
             repository.save(newUser);
 

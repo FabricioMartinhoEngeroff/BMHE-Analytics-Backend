@@ -1,7 +1,6 @@
 package com.dvFabricio.BMEH.domain.user;
 
-
-
+import com.dvFabricio.BMEH.domain.endereco.Endereco;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,21 +34,37 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false, unique = true, length = 14)
+    private String cpf;
+
+    @Column(nullable = false, length = 15)
+    private String telefone;
+
+    @Embedded
+    private Endereco endereco;
+
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "users_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
+    @JoinTable(
+            name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
     private List<Role> roles = new ArrayList<>();
 
-    public User(String login, String email, String password) {
+    public User(String login, String email, String password, String cpf, String telefone, Endereco endereco) {
+        this.id = UUID.randomUUID();
         this.login = login;
         this.email = email;
         this.password = password;
+        this.cpf = cpf;
+        this.telefone = telefone;
+        this.endereco = endereco;
         this.roles = new ArrayList<>();
     }
 
     public List<Role> getRoles() {
         return roles == null ? new ArrayList<>() : roles;
     }
-
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -81,4 +96,3 @@ public class User implements UserDetails {
         return true;
     }
 }
-

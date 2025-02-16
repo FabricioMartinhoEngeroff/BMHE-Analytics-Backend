@@ -21,6 +21,8 @@
         <flyway.version>9.22.0</flyway.version>
         <jwt.version>4.4.0</jwt.version>
         <junit.platform.version>1.10.0</junit.platform.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <dependencyManagement>

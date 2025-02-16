@@ -1,6 +1,7 @@
 package com.dvFabricio.BMEH.domain.DTOs;
 
 
+import com.dvFabricio.BMEH.domain.endereco.Endereco;
 import com.dvFabricio.BMEH.domain.user.Role;
 import com.dvFabricio.BMEH.domain.user.User;
 
@@ -12,7 +13,9 @@ public record UserDTO(
         String login,
         String email,
         List<String> roles,
-        String password
+        String cpf,
+        String telefone,
+        Endereco endereco
 ) {
     public UserDTO(User user) {
         this(
@@ -24,9 +27,16 @@ public record UserDTO(
                         .map(Role::getName)
                         .toList()
                         : List.of(),
-                user.getPassword()
+                user.getCpf(),
+                user.getTelefone(),
+                user.getEndereco()
         );
     }
 
+    public String getRua() {
+        return endereco != null ? endereco.getRua() : null;
+    }
 }
+
+
 

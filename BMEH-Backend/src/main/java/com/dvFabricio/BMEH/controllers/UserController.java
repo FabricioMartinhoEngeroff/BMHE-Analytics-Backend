@@ -1,10 +1,11 @@
 package com.dvFabricio.BMEH.controllers;
 
-import com.dvFabricio.BMEH.domain.DTOs.UserDTO;
 import com.dvFabricio.BMEH.domain.DTOs.UserRequestDTO;
+import com.dvFabricio.BMEH.infra.exception.authorization.JwtException;
 import com.dvFabricio.BMEH.infra.exception.database.MissingRequiredFieldException;
 import com.dvFabricio.BMEH.infra.exception.resource.DuplicateResourceException;
 import com.dvFabricio.BMEH.infra.exception.resource.ResourceNotFoundExceptions;
+import com.dvFabricio.BMEH.infra.security.TokenService;
 import com.dvFabricio.BMEH.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,23 +23,22 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final TokenService tokenService;
 
-    @GetMapping
-    public ResponseEntity<List<UserDTO>> findAllUsers() {
-        return ResponseEntity.ok(userService.findAllUsers());
-    }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> findUserById(@PathVariable String id) {
+    @GetMapping("/me")
+    public ResponseEntity<?>findAuthenticatedUser(@RequestHeader("Authorization") String token) {
         try {
-            UUID uuid = UUID.fromString(id);
-            return ResponseEntity.ok(userService.findUserById(uuid));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid ID format");
+            UUID userId = tokenService.getUserIdFromToken(token);
+            return ResponseEntity.ok(userService.findUserById(userId));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (ResourceNotFoundExceptions e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
+
 
     @PostMapping
     public ResponseEntity<?> createUser(@RequestBody @Valid UserRequestDTO userRequestDTO) {

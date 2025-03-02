@@ -6,11 +6,12 @@ import com.dvFabricio.BMEH.domain.user.Role;
 import com.dvFabricio.BMEH.domain.user.User;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public record UserDTO(
         UUID id,
-        String login,
+        String name,
         String email,
         List<String> roles,
         String cpf,
@@ -20,7 +21,7 @@ public record UserDTO(
     public UserDTO(User user) {
         this(
                 user.getId(),
-                user.getLogin(),
+                user.getName(),
                 user.getEmail(),
                 user.getRoles() != null && !user.getRoles().isEmpty()
                         ? user.getRoles().stream()
@@ -34,8 +35,9 @@ public record UserDTO(
     }
 
     public String getRua() {
-        return endereco != null ? endereco.getRua() : null;
+        return Optional.ofNullable(endereco).map(Endereco::getRua).orElse(null);
     }
+
 }
 
 

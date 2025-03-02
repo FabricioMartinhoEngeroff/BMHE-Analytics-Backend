@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.UUID;
 
 @Service
 public class TokenService {
@@ -32,6 +33,7 @@ public class TokenService {
     @Value("${api.security.user.fixed.id:}")
     private String fixedUserEmail;
 
+
     public String generateToken(User user) {
         if (useFixedToken) {
             return fixedToken;
@@ -41,7 +43,7 @@ public class TokenService {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer("BMEH")
-                    .withSubject(user.getEmail())
+                    .withSubject(user.getId().toString())
                     .withExpiresAt(generateExpirationDate())
                     .sign(algorithm);
         } catch (JWTCreationException e) {
@@ -65,6 +67,16 @@ public class TokenService {
             throw new JwtException("Token JWT expirado. Faça login novamente.", exception);
         } catch (JWTVerificationException exception) {
             throw new JwtException("Token JWT inválido.", exception);
+        }
+    }
+
+
+    public UUID getUserIdFromToken(String token) {
+        String userIdString = validateToken(token);
+        try {
+            return UUID.fromString(userIdString);
+        } catch (IllegalArgumentException e) {
+            throw new JwtException("Token contém um ID inválido.", e);
         }
     }
 

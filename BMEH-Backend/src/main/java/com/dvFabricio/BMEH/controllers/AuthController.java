@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -48,7 +47,14 @@ public class AuthController {
             }
 
             String token = tokenService.generateToken(user);
-            return ResponseEntity.ok(new LoginResponseDTO(user.getLogin(), token));
+            return ResponseEntity.ok(new LoginResponseDTO(
+                    user.getName(),
+                    user.getEmail(),
+                    user.getCpf(),
+                    user.getTelefone(),
+                    user.getEndereco(),
+                    token
+            ));
         } catch (UsernameNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
@@ -56,6 +62,8 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegisterRequestDTO body) {
+        System.out.println("➡️ Recebendo dados do frontend: " + body);
+
         if (repository.existsByEmail(body.email())) {
             return ResponseEntity.badRequest().body("Email is already in use.");
         }
@@ -65,7 +73,7 @@ public class AuthController {
 
         try {
             User newUser = new User(
-                    body.login(),
+                    body.name(),
                     body.email(),
                     passwordEncoder.encode(body.password()),
                     body.cpf(),
@@ -80,7 +88,15 @@ public class AuthController {
             repository.save(newUser);
 
             String token = tokenService.generateToken(newUser);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new LoginResponseDTO(newUser.getLogin(), token));
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(new LoginResponseDTO(
+                    newUser.getName(),
+                    newUser.getEmail(),
+                    newUser.getCpf(),
+                    newUser.getTelefone(),
+                    newUser.getEndereco(),
+                    token
+            ));
         } catch (ResourceNotFoundExceptions e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }

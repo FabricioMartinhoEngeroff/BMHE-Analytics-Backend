@@ -13,8 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+
 
 @Service
 public class UserService {
@@ -29,8 +30,10 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public List<UserDTO> findAllUsers() {
-        return userRepository.findAll().stream().map(UserDTO::new).toList();
+    public UserDTO findAuthenticatedUser(UUID userId) {
+        return userRepository.findById(userId)
+                .map(UserDTO::new)
+                .orElseThrow(() -> new ResourceNotFoundExceptions("Usuário não encontrado com ID: " + userId));
     }
 
     public UserDTO findUserById(UUID userId) {
@@ -53,7 +56,7 @@ public class UserService {
 
         String encodedPassword = passwordEncoder.encode(userRequestDTO.password());
         User user = new User(
-                userRequestDTO.login(),
+                userRequestDTO.name(),
                 userRequestDTO.email(),
                 encodedPassword,
                 userRequestDTO.cpf(),
@@ -85,50 +88,32 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    private void updateUserFields(User user, UserRequestDTO userRequestDTO) {
-        if (!isBlank(userRequestDTO.login())) {
-            user.setLogin(userRequestDTO.login());
-        }
-        if (!isBlank(userRequestDTO.email())) {
-            user.setEmail(userRequestDTO.email());
-        }
-        if (!isBlank(userRequestDTO.password())) {
-            user.setPassword(passwordEncoder.encode(userRequestDTO.password()));
-        }
-        if (!isBlank(userRequestDTO.cpf())) {
-            user.setCpf(userRequestDTO.cpf());
-        }
-        if (!isBlank(userRequestDTO.telefone())) {
-            user.setTelefone(userRequestDTO.telefone());
-        }
-        if (userRequestDTO.endereco() != null) {
-            user.setEndereco(userRequestDTO.endereco());
-        }
+    private void updateUserFields(User user, UserRequestDTO dto) {
+        Optional.ofNullable(dto.name()).ifPresent(user::setName);
+        Optional.ofNullable(dto.email()).ifPresent(user::setEmail);
+        Optional.ofNullable(dto.password()).filter(p -> !p.isBlank())
+                .ifPresent(p -> user.setPassword(passwordEncoder.encode(p)));
+        Optional.ofNullable(dto.cpf()).ifPresent(user::setCpf);
+        Optional.ofNullable(dto.telefone()).ifPresent(user::setTelefone);
+        Optional.ofNullable(dto.endereco()).ifPresent(user::setEndereco);
     }
 
-    private void validateRequiredFields(UserRequestDTO userRequestDTO) {
-        if (isBlank(userRequestDTO.login())) {
-            throw new MissingRequiredFieldException("login", "Login cannot be empty");
-        }
-        if (isBlank(userRequestDTO.email())) {
-            throw new MissingRequiredFieldException("email", "Email cannot be empty");
-        }
-        if (isBlank(userRequestDTO.password())) {
-            throw new MissingRequiredFieldException("password", "Password cannot be empty");
-        }
-        if (isBlank(userRequestDTO.cpf())) {
-            throw new MissingRequiredFieldException("cpf", "CPF cannot be empty");
-        }
-        if (isBlank(userRequestDTO.telefone())) {
-            throw new MissingRequiredFieldException("telefone", "Phone number cannot be empty");
-        }
-        if (userRequestDTO.endereco() == null) {
+    private void validateRequiredFields(UserRequestDTO dto) {
+        validateField("name", dto.name());
+        validateField("email", dto.email());
+        validateField("password", dto.password());
+        validateField("cpf", dto.cpf());
+        validateField("telefone", dto.telefone());
+
+        if (dto.endereco() == null) {
             throw new MissingRequiredFieldException("endereco", "Address cannot be empty");
         }
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
+    private void validateField(String fieldName, String value) {
+        if (value == null || value.isBlank()) {
+            throw new MissingRequiredFieldException(fieldName, fieldName + " cannot be empty");
+        }
     }
 }
 

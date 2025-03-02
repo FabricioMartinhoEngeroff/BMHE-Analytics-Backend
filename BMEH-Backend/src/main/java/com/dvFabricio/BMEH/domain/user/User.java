@@ -26,7 +26,7 @@ public class User implements UserDetails {
     private UUID id;
 
     @Column(nullable = false, unique = true)
-    private String login;
+    private String name;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -51,9 +51,9 @@ public class User implements UserDetails {
     )
     private List<Role> roles = new ArrayList<>();
 
-    public User(String login, String email, String password, String cpf, String telefone, Endereco endereco) {
+    public User(String name, String email, String password, String cpf, String telefone, Endereco endereco) {
         this.id = UUID.randomUUID();
-        this.login = login;
+        this.name = name;
         this.email = email;
         this.password = password;
         this.cpf = cpf;
@@ -73,7 +73,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return login;
+        return name;
     }
 
     @Override

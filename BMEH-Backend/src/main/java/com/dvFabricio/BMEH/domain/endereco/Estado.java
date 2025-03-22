@@ -3,7 +3,9 @@ package com.dvFabricio.BMEH.domain.endereco;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Locale;
 
 public enum Estado {
     ACRE("Acre"),
@@ -47,14 +49,19 @@ public enum Estado {
 
     @JsonCreator
     public static Estado fromNome(String nome) {
-        String nomeTrim = nome.trim();
+        String nomeNormalizado = Normalizer
+                .normalize(nome.trim(), Normalizer.Form.NFD)
+                .replaceAll("[^\\p{ASCII}]", "")
+                .toUpperCase(Locale.ROOT)
+                .replace(" ", "_");
 
         return Arrays.stream(values())
-                .filter(estado -> estado.nome.equalsIgnoreCase(nomeTrim))
+                .filter(estado -> estado.name().equalsIgnoreCase(nomeNormalizado)
+                        || estado.nome.equalsIgnoreCase(nome.trim()))
                 .findFirst()
                 .orElseThrow(() -> {
-                    System.out.println("❌ Estado inválido: " + nome);
-                    System.out.println("📌 Estados disponíveis: " + Arrays.toString(Estado.values()));
+                    System.err.println("❌ Estado inválido: " + nome);
+                    System.err.println("📌 Estados disponíveis: " + Arrays.toString(Estado.values()));
                     return new IllegalArgumentException("Estado inválido. Use um dos seguintes: " + Arrays.toString(Estado.values()));
                 });
     }
